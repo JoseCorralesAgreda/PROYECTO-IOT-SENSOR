@@ -1,0 +1,29 @@
+Fecha: 2026-09-08
+Comando: C:/Users/JOSEFRANZ/.platformio/penv/Scripts/platformio.exe test -e native
+PlatformIO Core 6.2.0; native 1.2.1; Unity 2.6.1
+MSVC toolset 14.44.35207; SCons 4.11.1
+Código de salida: 0
+
+Salida de pruebas:
+test\test_application\test_main.cpp:47: test_firmware_start_timeout_blink_and_recovery [PASSED]
+test\test_echo_capture\test_main.cpp:87: test_ordered_pulse_and_consumption [PASSED]
+test\test_echo_capture\test_main.cpp:88: test_timeout_boundaries [PASSED]
+test\test_echo_capture\test_main.cpp:89: test_partial_missing_late_and_old_edges [PASSED]
+test\test_echo_capture\test_main.cpp:90: test_pending_protection_and_wrap [PASSED]
+test\test_echo_capture\test_main.cpp:91: test_rise_at_deadline_and_duplicate_edges [PASSED]
+test\test_indicator\test_main.cpp:63: test_boundaries_and_exclusion [PASSED]
+test\test_indicator\test_main.cpp:64: test_invalid_values [PASSED]
+test\test_indicator\test_main.cpp:65: test_phase_and_repeated_invalid [PASSED]
+test\test_indicator\test_main.cpp:66: test_recovery_and_new_error [PASSED]
+test\test_indicator\test_main.cpp:67: test_wrap [PASSED]
+test\test_sensor\test_main.cpp:87: test_conversion_and_no_overwrite [PASSED]
+test\test_sensor\test_main.cpp:88: test_echo_high_and_period [PASSED]
+test\test_sensor\test_main.cpp:89: test_timeout_and_wrap [PASSED]
+test\test_sensor\test_main.cpp:90: test_led_gpio [PASSED]
+
+Environment    Test               Status    Duration
+native         test_application   PASSED    00:00:09.858
+native         test_echo_capture  PASSED    00:00:03.861
+native         test_indicator     PASSED    00:00:03.877
+native         test_sensor        PASSED    00:00:04.452
+15 test cases: 15 succeeded in 00:00:22.048

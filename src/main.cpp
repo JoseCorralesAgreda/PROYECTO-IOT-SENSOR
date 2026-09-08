@@ -1,18 +1,25 @@
-#include <Arduino.h>
+﻿#include <Arduino.h>
+#include "DistanceIndicator.h"
+#include "LedDriver.h"
+#include "UltrasonicSensor.h"
 
-// put function declarations here:
-int myFunction(int, int);
+namespace {
+UltrasonicSensor sensor(18, 19);
+DistanceIndicator indicator;
+LedDriver leds(25, 26, 27);
+}
 
 void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+    leds.begin();
+    indicator = DistanceIndicator(millis());
+    leds.apply(indicator.output(millis()));
+    sensor.begin();
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-}
-
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+    Reading reading;
+    if (sensor.takeReading(reading)) indicator.accept(reading.distanceCm, millis());
+    sensor.update();
+    if (sensor.takeReading(reading)) indicator.accept(reading.distanceCm, millis());
+    leds.apply(indicator.output(millis()));
 }

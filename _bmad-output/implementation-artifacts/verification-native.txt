@@ -1,8 +1,11 @@
-Fecha: 2026-09-08
+Fecha: 2026-09-14
 Comando: C:/Users/JOSEFRANZ/.platformio/penv/Scripts/platformio.exe test -e native
 PlatformIO Core 6.2.0; native 1.2.1; Unity 2.6.1
 MSVC toolset 14.44.35207; SCons 4.11.1
 Código de salida: 0
+Huella de fuentes (SHA-256): ff667ca529aef8c23dfb59142a672dfe49d3c99f30baf7f6fe9e878510e54db1
+Alcance de huella: 17 archivos; platformio.ini y archivos .h/.cpp/.py bajo include/, src/, test/ y scripts/.
+Algoritmo reproducible: ordenar las rutas relativas con `/`; para cada archivo formar `ruta<TAB>sha256(bytes)<LF>`; calcular SHA-256 sobre la concatenación UTF-8 de las 17 líneas.
 
 Salida de pruebas:
 test\test_application\test_main.cpp:47: test_firmware_start_timeout_blink_and_recovery [PASSED]
@@ -16,14 +19,31 @@ test\test_indicator\test_main.cpp:64: test_invalid_values [PASSED]
 test\test_indicator\test_main.cpp:65: test_phase_and_repeated_invalid [PASSED]
 test\test_indicator\test_main.cpp:66: test_recovery_and_new_error [PASSED]
 test\test_indicator\test_main.cpp:67: test_wrap [PASSED]
-test\test_sensor\test_main.cpp:87: test_conversion_and_no_overwrite [PASSED]
-test\test_sensor\test_main.cpp:88: test_echo_high_and_period [PASSED]
-test\test_sensor\test_main.cpp:89: test_timeout_and_wrap [PASSED]
-test\test_sensor\test_main.cpp:90: test_led_gpio [PASSED]
+test\test_sensor\test_main.cpp:102: test_conversion_and_no_overwrite [PASSED]
+test\test_sensor\test_main.cpp:103: test_echo_high_and_period [PASSED]
+test\test_sensor\test_main.cpp:104: test_timeout_and_wrap [PASSED]
+test\test_sensor\test_main.cpp:105: test_led_gpio [PASSED]
 
 Environment    Test               Status    Duration
-native         test_application   PASSED    00:00:09.858
-native         test_echo_capture  PASSED    00:00:03.861
-native         test_indicator     PASSED    00:00:03.877
-native         test_sensor        PASSED    00:00:04.452
-15 test cases: 15 succeeded in 00:00:22.048
+native         test_application   PASSED    00:00:04.762
+native         test_echo_capture  PASSED    00:00:04.521
+native         test_indicator     PASSED    00:00:03.924
+native         test_sensor        PASSED    00:00:04.172
+15 test cases: 15 succeeded in 00:00:17.379
+
+Verificación focalizada posterior a la revisión:
+Fecha: 2026-09-14
+Comando ejecutado: C:/Users/JOSEFRANZ/.platformio/penv/Scripts/platformio.exe test -e native -f test_sensor
+Equivalente portable: pio test -e native -f test_sensor
+Código de salida: 0
+test\test_sensor\test_main.cpp:102: test_conversion_and_no_overwrite [PASSED]
+test\test_sensor\test_main.cpp:103: test_echo_high_and_period [PASSED]
+test\test_sensor\test_main.cpp:104: test_timeout_and_wrap [PASSED]
+test\test_sensor\test_main.cpp:105: test_led_gpio [PASSED]
+4 test cases: 4 succeeded in 00:00:05.749
+
+Control de calidad documental:
+Fecha: 2026-09-14
+Comando: git diff --check
+Código de salida: 0
+Salida: sin errores; se mostraron Ãºnicamente advertencias de normalizaciÃ³n LF/CRLF del Ã¡rbol de trabajo.

@@ -1,282 +1,167 @@
 # Informe técnico: indicador de distancia con ESP32
 
-Autor del proyecto: JOSE FRANZ. Fecha: 2026-09-07. Contexto: práctica educativa.
+Autor del proyecto: JOSE FRANZ. Creado: 2026-09-07. Actualizado: 2026-09-14. Contexto: práctica educativa.
 
-**Estado:** diseño documental y código de referencia del núcleo lógico. No se ha implementado ni ejecutado el firmware completo. No se han realizado mediciones físicas. El cierre eléctrico depende de verificar Echo sin ampliar los componentes autorizados.
+**Estado:** firmware implementado en C++17, 15 casos Unity aprobados y compilación aprobada para `esp32doit-devkit-v1`. No se cargó firmware ni se realizaron mediciones físicas. Echo no debe conectarse al GPIO 19 hasta demostrar que su tensión máxima no supera 3,6 V.
 
-## 1. Requerimientos funcionales y no funcionales
+## 1. Requerimientos y alcance
 
-El [PRD](prd.md) contiene los requisitos RF-01 a RF-07 y RNF-01 a RNF-06, sus criterios de aceptación y supuestos. El sistema utiliza un solo LED para las distancias válidas: rojo por debajo de 10 cm, amarillo desde 10 hasta menos de 30 cm y verde desde 30 cm. Una lectura inválida activa el parpadeo simultáneo de los tres LEDs a 2 Hz.
+El [PRD](prd.md) conserva los requisitos RF-01 a RF-07 y RNF-01 a RNF-06. El sistema clasifica cada lectura válida de 2 a 400 cm: rojo desde 2 hasta menos de 10 cm, amarillo desde 10 hasta menos de 30 cm y verde desde 30 hasta 400 cm. Solo un LED se enciende en esas bandas. Una lectura ausente, no finita o fuera del rango produce un parpadeo conjunto de 250 ms encendido y 250 ms apagado.
 
-Se exige programación orientada a objetos en C++ moderno, código en inglés, documentación en español y pruebas unitarias. El alcance no incluye conectividad ni funciones adicionales.
+El alcance incluye ESP32, sensor ultrasónico de 5 V, tres LEDs y una resistencia de 220 Ω por LED. No incluye conectividad, almacenamiento, filtrado, histéresis ni hardware de adaptación añadido. El software adopta S-01 a S-04; su validez física sigue pendiente.
 
-## 2. Análisis y diseño
+## 2. Diseño implementado
 
-### 2.1 Medición y límites
+### 2.1 Adquisición y temporización
 
-Para el HC-SR04 convencional se adopta provisionalmente el intervalo nominal de 2 a 400 cm. El módulo recibe un pulso Trigger de al menos 10 µs; la duración de Echo permite estimar la distancia mediante `distanceCm = echoDurationUs / 58.0`. La ficha recomienda separar las mediciones más de 60 ms. Se propone un período de 100 ms. Estos datos proceden de la [ficha del sensor](https://cdn.sparkfun.com/datasheets/Sensors/Proximity/HCSR04.pdf).
+`UltrasonicSensor` inicia adquisiciones con separación mínima de 100 000 µs entre inicios reales. Mantiene Trigger alto mediante `delayMicroseconds(10)` y no espera el eco en el bucle. `EchoCapture` recibe flancos desde una interrupción `CHANGE`, exige subida seguida de bajada antes de 30 000 µs y publica exactamente un resultado. La ISR y la tarea protegen la misma captura con `portMUX_TYPE`.
 
-El tiempo máximo propuesto de 30 ms es una decisión de implementación, superior a los 23 200 µs correspondientes a 400 cm con esa conversión. Un timeout representa ausencia de medición válida, no una distancia de cero. La adquisición debe ser una máquina de estados o capturar flancos para no detener durante 30 ms la actualización de LEDs.
+Un pulso válido se convierte mediante `durationUs / 58.0f`. Un timeout o Echo alto al intentar iniciar produce `std::nullopt`. Las diferencias temporales usan resta sin signo para tolerar el desbordamiento de `uint32_t`. El sistema no intenta recuperar ciclos atrasados mediante ráfagas.
 
-El software no puede demostrar que un objeto se encuentra dentro del rango solo porque obtiene un pulso aparentemente válido. Superficies, orientación y ecos pueden afectar la medida; especialmente por debajo del mínimo, no se garantiza reconocer todos los casos físicamente fuera de rango.
-
-### 2.2 Arquitectura del sistema
+### 2.2 Arquitectura de software
 
 ```mermaid
 flowchart LR
-    Object[Objeto] --> Sensor[Sensor ultrasónico]
-    Sensor -->|Echo: interfaz pendiente| Acquisition[Adquisición en ESP32]
-    Acquisition -->|Trigger| Sensor
-    Acquisition -->|Distancia o lectura inválida| Controller[DistanceIndicator]
-    Clock[Reloj del ESP32] --> Controller
-    Controller --> Output[Salida GPIO]
-    Output --> Red[LED rojo y resistencia]
-    Output --> Yellow[LED amarillo y resistencia]
-    Output --> Green[LED verde y resistencia]
+    Echo[Echo GPIO19] -->|interrupción CHANGE| Sensor[UltrasonicSensor]
+    Sensor --> Capture[EchoCapture]
+    Sensor -->|Reading| Main[setup / loop]
+    Main --> Indicator[DistanceIndicator]
+    Indicator -->|LedOutput| Main
+    Main --> Driver[LedDriver]
+    Driver --> R[GPIO25 rojo]
+    Driver --> Y[GPIO26 amarillo]
+    Driver --> G[GPIO27 verde]
+    Main -->|Trigger| T[GPIO18]
 ```
 
-Todos los bloques de software se ejecutan en el ESP32. El reloj representa un recurso interno, no un componente adicional.
+| Componente | Firma pública real | Responsabilidad |
+|---|---|---|
+| `Reading` | `std::optional<float> distanceCm` | Diferencia lectura válida/inválida |
+| `DistanceIndicator` | `DistanceIndicator(uint32_t nowMs = 0)`; `accept(optional<float>, uint32_t)`; `output(uint32_t)` | Clasificación, exclusión y fase de parpadeo |
+| `EchoCapture` | `start(uint32_t)`; `onEdge(bool, uint32_t)`; `expire(uint32_t)`; `takePulse(optional<uint32_t>&)` | Secuencia temporal y consumo único |
+| `UltrasonicSensor` | `UltrasonicSensor(uint8_t, uint8_t)`; `begin()`; `update()`; `takeReading(Reading&)` | GPIO, interrupción, Trigger y conversión |
+| `LedDriver` | `LedDriver(uint8_t, uint8_t, uint8_t)`; `begin()`; `apply(LedOutput)` | Escritura activa alta de los tres LEDs |
 
-### 2.3 Diagrama de circuito
+La [arquitectura detallada](../../architecture/architecture-indicador-distancia-2026-09-07/ARCHITECTURE-SPINE.md) conserva los contratos AD-1 a AD-6.
 
-Esquema parcial propuesto, **no apto para montaje completo** mientras Echo esté pendiente. Los GPIO son asignaciones propuestas para la placa configurada, no cableado verificado.
-
-```text
-ESP32 GPIO25 ── R1 220 Ω ── ánodo LED rojo    cátodo ── GND
-ESP32 GPIO26 ── R2 220 Ω ── ánodo LED amarillo cátodo ── GND
-ESP32 GPIO27 ── R3 220 Ω ── ánodo LED verde   cátodo ── GND
-
-Alimentación 5 V de placa (*) ─────────────────── VCC sensor
-ESP32 GND ────────────────────────────────────── GND sensor
-ESP32 GPIO18 ─────────────────────────────────── TRIG sensor
-ESP32 GPIO19       SIN CONEXIÓN                  ECHO sensor
-                     ↑ interfaz pendiente
-```
-
-(*) Verificar disponibilidad y capacidad del pin de 5 V en la placa física. No aplicar 5 V al pin de 3,3 V del ESP32. Las masas deben ser comunes. No se incluye una fuente adicional en la lista de materiales.
-
-Espressif especifica una tolerancia de GPIO de 3,6 V; una salida Echo de 5 V necesita adaptación antes de llegar al GPIO. No se dibuja una conexión directa insegura ni se añaden resistencias ajenas a la lista autorizada. La alimentación del sensor a 5 V no permite por sí sola afirmar el nivel exacto de Echo de todas las variantes: debe verificarse la unidad. [Fuente: Espressif](https://docs.espressif.com/projects/esp-faq/en/latest/hardware-related/hardware-design.html#what-is-the-voltage-tolerance-of-gpios-of-esp-chips).
-
-Para cada LED, la estimación es `I = (V_GPIO − V_F) / 220 Ω`. Por ejemplo, con 3,3 V y una caída de 2,0 V resultarían aproximadamente 5,9 mA. Es un cálculo ilustrativo; no una medición ni una especificación de los LEDs disponibles.
-
-### 2.4 Diagrama estructural
-
-```mermaid
-classDiagram
-    class UltrasonicSensor {
-        +update(nowUs)
-        +hasReading() bool
-        +reading() optional~float~
-    }
-    class DistanceIndicator {
-        -State state_
-        -uint32_t phaseStart_
-        +accept(distanceCm, nowMs)
-        +output(nowMs) LedOutput
-    }
-    class LedOutput {
-        +bool red
-        +bool yellow
-        +bool green
-    }
-    class LedDriver {
-        +apply(LedOutput)
-    }
-    UltrasonicSensor --> DistanceIndicator : entrega lecturas
-    DistanceIndicator --> LedOutput : produce
-    LedDriver --> LedOutput : consume
-```
-
-`UltrasonicSensor` y `LedDriver` son clases propuestas, aún no implementadas. El núcleo siguiente no depende de Arduino y admite reloj y entradas controlados desde pruebas.
-
-### 2.5 Diagramas de comportamiento
-
-```mermaid
-stateDiagram-v2
-    [*] --> Invalid
-    Invalid --> Red: lectura válida menor de 10
-    Invalid --> Yellow: lectura válida desde 10 hasta menos de 30
-    Invalid --> Green: lectura válida desde 30
-    Red --> Yellow: desde 10 hasta menos de 30
-    Red --> Green: desde 30
-    Yellow --> Red: menor de 10
-    Yellow --> Green: desde 30
-    Green --> Red: menor de 10
-    Green --> Yellow: desde 10 hasta menos de 30
-    Red --> Invalid: lectura inválida o timeout
-    Yellow --> Invalid: lectura inválida o timeout
-    Green --> Invalid: lectura inválida o timeout
-    Invalid --> Invalid: alternar cada 250 ms sin reiniciar por otra lectura inválida
-```
-
-Todas las transiciones numéricas presuponen una lectura dentro del intervalo válido. En cada estado de color, los otros dos LEDs están apagados.
+### 2.3 Secuencia del bucle
 
 ```mermaid
 sequenceDiagram
-    participant Loop as Bucle principal
+    participant Main as loop()
     participant Sensor as UltrasonicSensor
     participant Logic as DistanceIndicator
     participant LEDs as LedDriver
-    Loop->>Sensor: update(nowUs)
-    opt Nueva lectura o timeout
-        Sensor-->>Loop: distancia o ausencia
-        Loop->>Logic: accept(reading, nowMs)
+    Main->>Sensor: takeReading(result)
+    opt Resultado disponible
+        Sensor-->>Main: válido o inválido
+        Main->>Logic: accept(distanceCm, millis())
     end
-    Loop->>Logic: output(nowMs)
-    Logic-->>Loop: estados de tres LEDs
-    Loop->>LEDs: apply(output)
+    Main->>Sensor: update()
+    Main->>Sensor: takeReading(result)
+    opt Resultado disponible
+        Main->>Logic: accept(distanceCm, millis())
+    end
+    Main->>Logic: output(millis())
+    Main->>LEDs: apply(output)
 ```
 
-## 3. Desarrollo e implementación
+El segundo consumo permite aplicar en la misma iteración un timeout generado por `update()`. `LedDriver::apply` escribe los tres GPIO en cada llamada, apagando primero los que deben quedar bajos.
 
-### 3.1 Estado del repositorio
+## 3. Configuración y cableado condicionado
 
-La configuración existente declara PlatformIO, plataforma `espressif32`, placa `esp32doit-devkit-v1` y framework Arduino. `src/main.cpp` contiene la plantilla inicial con `myFunction`; no implementa aún el proyecto. Este trabajo entrega documentación; el fragmento siguiente es una propuesta de código fuente, no firmware compilado ni cargado.
+`platformio.ini` fija `espressif32@7.1.1`, Arduino ESP32 `3.20017.241212+sha.dcc1105b`, C++17, `native@1.2.1` y Unity `2.6.1`.
 
-La implementación posterior debe ubicar el núcleo en `include/DistanceIndicator.h`, los adaptadores en archivos pequeños de `include/` y `src/`, y las pruebas en `test/`. Se propone C++17 para `std::optional`; debe configurarse y verificarse con el compilador de PlatformIO antes de integrar.
+| Función | GPIO | Estado |
+|---|---:|---|
+| Trigger | 18 | Implementado como salida, inicialmente baja |
+| Echo | 19 | Implementado como entrada `CHANGE`; conexión física bloqueada por P-01 |
+| LED rojo | 25 | Salida activa alta |
+| LED amarillo | 26 | Salida activa alta |
+| LED verde | 27 | Salida activa alta |
 
-### 3.2 Código fuente documentado: núcleo propuesto
+```text
+ESP32 GPIO25 ── 220 Ω ── ánodo LED rojo      cátodo ── GND
+ESP32 GPIO26 ── 220 Ω ── ánodo LED amarillo  cátodo ── GND
+ESP32 GPIO27 ── 220 Ω ── ánodo LED verde     cátodo ── GND
 
-`accept` cambia el estado solamente a partir de una lectura nueva. `output` calcula las salidas usando el reloj recibido. La ausencia se representa con `std::nullopt`; NaN e infinito también son inválidos. El constructor recibe el instante inicial del reloj para definir la fase de arranque.
-
-```cpp
-#pragma once
-
-#include <cmath>
-#include <cstdint>
-#include <optional>
-
-struct LedOutput {
-    bool red;
-    bool yellow;
-    bool green;
-};
-
-class DistanceIndicator {
-public:
-    explicit DistanceIndicator(std::uint32_t nowMs = 0)
-        : phaseStart_(nowMs) {}
-
-    void accept(std::optional<float> distanceCm, std::uint32_t nowMs) {
-        const auto next = classify(distanceCm);
-        if (next == State::Invalid && state_ != State::Invalid) {
-            phaseStart_ = nowMs;
-            phaseOn_ = true;
-        }
-        state_ = next;
-    }
-
-    LedOutput output(std::uint32_t nowMs) {
-        if (state_ == State::Invalid) {
-            // Unsigned subtraction preserves elapsed time across timer wrap.
-            const std::uint32_t elapsed = nowMs - phaseStart_;
-            const std::uint32_t steps = elapsed / kHalfPeriodMs;
-            if (steps != 0) {
-                phaseStart_ += steps * kHalfPeriodMs;
-                phaseOn_ = (steps % 2 == 0) ? phaseOn_ : !phaseOn_;
-            }
-            return {phaseOn_, phaseOn_, phaseOn_};
-        }
-        phaseOn_ = true;
-        return {state_ == State::Red,
-                state_ == State::Yellow,
-                state_ == State::Green};
-    }
-
-private:
-    enum class State { Invalid, Red, Yellow, Green };
-    static constexpr std::uint32_t kHalfPeriodMs = 250;
-
-    static State classify(std::optional<float> distanceCm) {
-        if (!distanceCm || !std::isfinite(*distanceCm) ||
-            *distanceCm < 2.0f || *distanceCm > 400.0f) {
-            return State::Invalid;
-        }
-        if (*distanceCm < 10.0f) return State::Red;
-        if (*distanceCm < 30.0f) return State::Yellow;
-        return State::Green;
-    }
-
-    State state_ = State::Invalid;
-    std::uint32_t phaseStart_;
-    bool phaseOn_ = true;
-};
+ESP32 GPIO18 ──────────────────────────────── TRIG sensor
+ESP32 GPIO19       SIN CONEXIÓN              ECHO sensor
+ESP32 GND ─────────────────────────────────── GND sensor
+5 V verificados de placa ──────────────────── VCC sensor
 ```
 
-Contrato temporal: invocar `output` periódicamente, sin dejar transcurrir un ciclo completo de 32 bits del reloj entre actualizaciones. No se usan retardos para parpadear. Antes de integrar debe probarse el fragmento y completar adquisición, conversión, timeout e inicialización de GPIO. No se propone una llamada bloqueante de adquisición que incumpla RNF-05.
+P-01 exige medir Echo con GPIO 19 desconectado. Solo se autoriza la conexión si el máximo observado es `≤3,6 V`. P-02 exige confirmar placa, alimentación, polaridad y características de los LEDs. Las masas deben ser comunes y nunca se aplican 5 V al pin de 3,3 V.
 
-## 4. Pruebas y validaciones
+## 4. Pruebas ejecutadas
 
-### 4.1 Pruebas unitarias previstas
+### 4.1 Cobertura automatizada
 
-| ID | Estímulo | Comprobación |
+La ejecución nativa usa las clases reales y un doble de Arduino para reloj, GPIO, interrupción y secciones críticas. No contiene esperas reales. El inventario completo, los nombres exactos de los 15 casos y la trazabilidad a requisitos están en el [plan integral de pruebas](../../../../PLAN-DE-PRUEBAS.md).
+
+| Suite | Casos | Resultado del 2026-09-14 |
+|---|---:|---|
+| `test_indicator` | 5 | Aprobados |
+| `test_echo_capture` | 5 | Aprobados |
+| `test_sensor` | 4 | Aprobados |
+| `test_application` | 1 | Aprobado |
+| **Total** | **15** | **15 aprobados** |
+
+La auditoría añadió aserciones dentro de `test_conversion_and_no_overwrite` para comprobar que `begin()` configura GPIO 18 como salida baja, GPIO 19 como entrada, instala `CHANGE` en el pin 19 y que ISR/tarea usan el mismo mutex. El número de casos no cambió.
+
+Comandos ejecutados:
+
+```powershell
+pio test -e native
+pio run -e esp32doit-devkit-v1
+git diff --check
+```
+
+`platformio` admite los mismos argumentos. La ruta absoluta conservada en los archivos de evidencia identifica el ejecutable local realmente utilizado.
+
+Evidencia: [`verification-native.txt`](../../../implementation-artifacts/verification-native.txt) y [`verification-esp32.txt`](../../../implementation-artifacts/verification-esp32.txt). Ambos registran la huella SHA-256 reproducible de las fuentes verificadas; la evidencia ESP32 registra además el tamaño y SHA-256 de `firmware.bin`.
+
+### 4.2 Alcance de la evidencia
+
+| Nivel | Resultado real | Qué no demuestra |
 |---|---|---|
-| PU-01 | 2; 9,99; 10; 29,99; 30; 400 cm | Límites y único LED correcto |
-| PU-02 | 1,99; 400,01; negativo; ausencia; NaN; infinito | Estado inválido |
-| PU-03 | Arranque; reloj 0, 249, 250, 499, 500 ms | Todos encendidos, encendidos, apagados, apagados, encendidos |
-| PU-04 | Lecturas inválidas cada 100 ms | La fase no se reinicia |
-| PU-05 | Rojo → amarillo → verde → rojo | Exclusión mutua en cada salida |
-| PU-06 | Inválida → válida → inválida | Recuperación y nueva fase encendida |
-| PU-07 | Cruce del máximo de uint32_t | Continúa la alternancia |
-| PU-08 | Tiempo salta varias medias fases | Recupera la fase correspondiente |
-| PU-09 | Adaptador recibe pulso conocido o timeout | Conversión o ausencia, sin espera indefinida |
+| Revisión documental | Requisitos, AD, firmas, GPIO y pruebas trazados | Comportamiento físico |
+| Pruebas de núcleo | Clasificación, fase, captura y desbordamientos aprobados | Precisión acústica o tensión |
+| Integración nativa | `setup()`/`loop()` con hardware simulado aprobados | Latencia real de ISR/GPIO |
+| Compilación ESP32 | Firmware construido correctamente | Carga o funcionamiento en placa |
+| Validación manual | No ejecutada | Montaje, seguridad eléctrica, bandas y tiempos físicos |
 
-Ejemplo de prueba previsto para ejecutar en equipo anfitrión; requiere extraer el encabezado anterior. No ejecutado en esta entrega.
+## 5. Plan de validación manual
 
-```cpp
-#include "DistanceIndicator.h"
-#include <cassert>
+El [PLAN-DE-PRUEBAS.md](../../../../PLAN-DE-PRUEBAS.md) define M-01 a M-08 con seguridad, preparación, pasos, resultado esperado, criterio de aprobación y evidencia. El orden obligatorio es:
 
-int main() {
-    DistanceIndicator indicator;
-    indicator.accept(10.0f, 0);
-    const auto yellow = indicator.output(0);
-    assert(!yellow.red && yellow.yellow && !yellow.green);
+1. inspeccionar placa, polaridad, resistencias, alimentación y masas con Echo desconectado;
+2. medir Echo sin conectarlo al GPIO y bloquear la continuación si supera 3,6 V;
+3. cargar y comprobar arranque/parpadeo;
+4. comprobar las tres bandas, recuperación y límites observables;
+5. medir Trigger, separación de ciclos, timeout, parpadeo y retraso de salida.
 
-    indicator.accept(std::nullopt, 100);
-    auto lights = indicator.output(100);
-    assert(lights.red && lights.yellow && lights.green);
-    indicator.accept(std::nullopt, 200);
-    lights = indicator.output(350);
-    assert(!lights.red && !lights.yellow && !lights.green);
-    lights = indicator.output(600);
-    assert(lights.red && lights.yellow && lights.green);
-}
-```
+Los límites físicos por debajo de 2 cm o por encima de 400 cm se interpretan conforme a P-03: el criterio exige que toda lectura reconocida como inválida active el error, pero no promete reconocer todos los ecos espurios.
 
-Las pruebas unitarias no demuestran compatibilidad eléctrica, precisión acústica ni cumplimiento temporal del firmware completo.
+## 6. Resultados y trazabilidad
 
-### 4.2 Validación física prevista
+| Resultado | Estado | Evidencia |
+|---|---|---|
+| RF-01 a RF-07 en lógica simulada | Aprobado | 15 casos Unity |
+| RNF-01 a RNF-04 | Aprobado por revisión, pruebas y compilación | Código, configuración y salida nativa |
+| RNF-05 en diseño y simulación | Aprobado | Casos temporales y de integración |
+| RNF-05 en hardware | Pendiente | M-07/M-08 |
+| RNF-06 compatibilidad eléctrica | Pendiente bloqueante | M-01/M-02 |
+| AD-1 a AD-5 | Implementados y probados en entorno nativo | Suites Unity y compilación |
+| AD-6 | Implementado en asignación de software; montaje pendiente | Código y M-01/M-02 pendiente |
 
-Después de resolver P-01 y verificar el cableado, comprobar objetos a distancias representativas de las tres bandas, ausencia de objeto y recuperación. Registrar distancia de referencia, lectura, LEDs observados y condiciones del blanco. Medir el período del parpadeo y el retraso de actualización con instrumentos del laboratorio. Estos instrumentos no forman parte del circuito del proyecto.
+No se asigna un porcentaje global porque mezclaría evidencia de distinto nivel. El software y la compilación están aprobados; la aceptación física del producto sigue abierta.
 
-Probar cerca de 10 y 30 cm para caracterizar cambios de color, sin exigir a la medición física distinguir centésimas. Intentar distancias inferiores y superiores al rango, documentando lecturas espurias en vez de afirmar detección garantizada. La tolerancia temporal propuesta es ±10 ms por transición, pendiente de comprobación.
+## 7. Conclusiones
 
-## 5. Resultados
+El repositorio ya contiene el firmware completo, sus adaptadores de Arduino, un núcleo comprobable y una integración nativa. La matriz automatizada cubre umbrales, exclusión, errores, recuperación, fase, desbordamiento, orden de flancos, timeout, consumo único, GPIO, período y composición de la aplicación.
 
-| Elemento | Resultado real de esta entrega |
-|---|---|
-| Requisitos y alcance | Documentados en PRD |
-| Arquitectura y diagramas | Diseño propuesto |
-| Compatibilidad eléctrica | Interfaz Echo pendiente; montaje completo no aprobado |
-| Código fuente | Núcleo de referencia incluido en el informe |
-| Compilación y pruebas unitarias | No ejecutadas |
-| Firmware completo | No implementado |
-| Ensayos físicos | No realizados |
-
-No se presentan porcentajes de éxito, precisión medida ni fotografías de un montaje inexistente. Los valores de las tablas de prueba son resultados esperados.
-
-## 6. Conclusiones
-
-La lógica solicitada se describe mediante cuatro estados y umbrales sin solapamiento. Puede verificarse independientemente del hardware con pruebas unitarias. La entrega documental no demuestra todavía el funcionamiento integral.
-
-El conjunto restringido de componentes no permite aprobar la conexión de un Echo de 5 V al ESP32. Además, el sensor no garantiza identificar todas las condiciones físicas fuera de rango. Ambos límites impiden declarar cumplimiento físico completo en este momento.
-
-## 7. Recomendaciones
-
-Confirmar la referencia exacta del sensor y su nivel de Echo con su documentación o una medición del laboratorio antes de conectar esa señal. Si excede 3,6 V, será necesario acordar una modificación explícita de la restricción eléctrica; este informe no incorpora tal modificación.
-
-Implementar y ejecutar primero las pruebas unitarias del núcleo y después integrar los adaptadores. Mantener los umbrales solicitados y completar la tabla de resultados únicamente con evidencia obtenida. Evitar añadir conectividad o funciones ajenas a la práctica.
+El riesgo principal continúa siendo eléctrico: una señal Echo superior a 3,6 V no puede conectarse directamente al ESP32. Después de cerrar P-01/P-02, los casos manuales permitirán decidir el cumplimiento físico sin inferir tolerancias ni pasos. Hasta entonces no corresponde declarar montaje funcional, precisión acústica ni tiempos medidos.
 
 ## 8. Anexos
 
@@ -289,18 +174,16 @@ Implementar y ejecutar primero las pruebas unitarias del núcleo y después inte
 | LED rojo | 1 |
 | LED amarillo | 1 |
 | LED verde | 1 |
-| Resistencia de 220 Ω, una por LED | 3 |
+| Resistencia de 220 Ω | 3, una por LED |
 
-### B. Registro de ensayo pendiente
+### B. Registro resumido de ensayo físico
 
-| Fecha | Caso | Entrada de referencia | Lectura | Salida observada | Evidencia | Veredicto |
+| Fecha | Caso | Entrada/condición | Instrumento | Resultado observado | Evidencia | Veredicto |
 |---|---|---|---|---|---|---|
-| Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | No ejecutado |
+| Pendiente | M-01 a M-08 | Pendiente | Pendiente | Pendiente | Pendiente | No ejecutado |
 
 ### C. Referencias
 
-Consultadas el 2026-09-07:
-
-1. [ElecFreaks: ficha técnica HC-SR04, alojada por SparkFun](https://cdn.sparkfun.com/datasheets/Sensors/Proximity/HCSR04.pdf).
-2. [Espressif: preguntas técnicas de diseño de hardware](https://docs.espressif.com/projects/esp-faq/en/latest/hardware-related/hardware-design.html).
-3. Configuración local `platformio.ini` y plantilla `src/main.cpp`, inspeccionadas durante la preparación del informe.
+1. [Ficha técnica HC-SR04 de ElecFreaks, alojada por SparkFun](https://cdn.sparkfun.com/datasheets/Sensors/Proximity/HCSR04.pdf).
+2. [Espressif: tolerancia de GPIO](https://docs.espressif.com/projects/esp-faq/en/latest/hardware-related/hardware-design.html#what-is-the-voltage-tolerance-of-gpios-of-esp-chips).
+3. `platformio.ini`, `include/`, `src/` y `test/`, inspeccionados y verificados el 2026-09-14.

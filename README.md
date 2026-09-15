@@ -16,15 +16,17 @@ En Windows se utiliza Visual Studio 2022 con herramientas C++ x64, toolset `14.4
 & 'C:/Users/JOSEFRANZ/.platformio/penv/Scripts/python.exe' -m pip install --target .pio/tools/scons scons==4.11.1
 ```
 
-En Linux/macOS se requiere GCC o Clang con C++17 en PATH. Estas plataformas no se ejecutaron en esta entrega. Las rutas siguientes corresponden a este equipo; en otro equipo puede utilizarse `pio` desde su entorno PlatformIO.
+En Linux/macOS se requiere GCC o Clang con C++17 en PATH. Estas plataformas no se ejecutaron en esta entrega. Con PlatformIO disponible en `PATH`:
 
 ```powershell
-& 'C:/Users/JOSEFRANZ/.platformio/penv/Scripts/platformio.exe' test -e native
-& 'C:/Users/JOSEFRANZ/.platformio/penv/Scripts/platformio.exe' run -e esp32doit-devkit-v1
+pio test -e native
+pio run -e esp32doit-devkit-v1
 git diff --check
 ```
 
-El entorno nativo compila las clases reales y los adaptadores con dobles de GPIO, interrupciones y reloj; no utiliza esperas reales. Incluye límites, exclusión, recuperación, fase, desbordamientos, captura ordenada, vencimiento, resultados pendientes, conversión y separación de disparos.
+También puede usarse `platformio` en lugar de `pio`. La evidencia local se generó con `C:/Users/JOSEFRANZ/.platformio/penv/Scripts/platformio.exe` como alternativa porque el comando no estaba en `PATH`.
+
+El entorno nativo compila las clases reales y los adaptadores con dobles de GPIO, interrupciones y reloj; no utiliza esperas reales. Incluye límites, exclusión, recuperación, fase, desbordamientos, captura ordenada, vencimiento, resultados pendientes, conversión, configuración GPIO/CHANGE, mutex compartido y separación de disparos. El inventario de los 15 casos, la trazabilidad y los procedimientos físicos reproducibles están en el [plan integral de pruebas](PLAN-DE-PRUEBAS.md).
 
 ## Versiones y evidencia
 
@@ -39,9 +41,9 @@ El entorno nativo compila las clases reales y los adaptadores con dobles de GPIO
 | Toolset MSVC nativo fijado | 14.44.35207 (Visual Studio 2022) |
 | SCons completo para MSVC fijado | 4.11.1 |
 
-Verificación del 2026-09-08: **15 pruebas nativas aprobadas** en cuatro suites, incluyendo `setup()` y `loop()` reales con hardware simulado. Compilación ESP32: `SUCCESS`, RAM 21 648 bytes y Flash 243 445 bytes. Evidencia: [pruebas nativas](_bmad-output/implementation-artifacts/verification-native.txt) y [compilación ESP32](_bmad-output/implementation-artifacts/verification-esp32.txt). No se cargó firmware.
+Verificación del 2026-09-14: **15 pruebas nativas aprobadas** en cuatro suites, incluyendo `setup()` y `loop()` reales con hardware simulado. Compilación ESP32: `SUCCESS`. Evidencia: [pruebas nativas](_bmad-output/implementation-artifacts/verification-native.txt) y [compilación ESP32](_bmad-output/implementation-artifacts/verification-esp32.txt). No se cargó firmware ni se ejecutaron ensayos físicos.
 
-## Pines propuestos y pendientes físicos
+## Pines implementados y pendientes físicos
 
 | Función | GPIO |
 |---|---:|
@@ -55,6 +57,6 @@ Las salidas LED son activas altas, con una resistencia de 220 Ω por LED y cáto
 
 P-01/P-02 siguen pendientes: confirmar referencia del sensor, placa, polaridad de LEDs y nivel de Echo. Mantener Echo sin conexión al GPIO hasta demostrar compatibilidad con el límite de 3,6 V; no conectar directamente una salida de 5 V ni añadir adaptación sin resolver expresamente el alcance. No cargar ni validar el montaje mientras estos pendientes bloqueen la integración.
 
-Los supuestos S-01 a S-04 se adoptan únicamente para desarrollar el software. P-03 limita el error a lecturas inválidas reconocidas: un eco espurio puede parecer válido aunque el objeto esté fuera de rango. Quedan por medir precisión, latencia de ISR, separación física de Trigger, parpadeo y retraso máximo de actualización de 10 ms. Las pruebas simuladas y la compilación no acreditan estos resultados.
+Los supuestos S-01 a S-04 definen el comportamiento implementado del software. P-03 limita el error a lecturas inválidas reconocidas: un eco espurio puede parecer válido aunque el objeto esté fuera de rango. Quedan por medir precisión, latencia de ISR, separación física de Trigger, parpadeo y retraso máximo de actualización de 10 ms. Las pruebas simuladas y la compilación no acreditan estos resultados.
 
-El [PRD](_bmad-output/planning-artifacts/prds/prd-indicador-distancia-2026-09-07/prd.md), el informe y la arquitectura conservan sus resultados históricos de diseño; la evidencia de implementación corresponde a esta entrega.
+El [PRD](_bmad-output/planning-artifacts/prds/prd-indicador-distancia-2026-09-07/prd.md), el [informe técnico](_bmad-output/planning-artifacts/prds/prd-indicador-distancia-2026-09-07/informe-tecnico.md) y la [arquitectura](_bmad-output/planning-artifacts/architecture/architecture-indicador-distancia-2026-09-07/ARCHITECTURE-SPINE.md) describen el firmware implementado y distinguen la evidencia automatizada de las validaciones físicas pendientes.

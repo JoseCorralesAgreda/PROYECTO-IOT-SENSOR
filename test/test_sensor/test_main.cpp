@@ -4,8 +4,18 @@
 void setUp() { fake::reset(); }
 void tearDown() { TEST_ASSERT_EQUAL(0, fake::lockDepth); }
 void test_conversion_and_no_overwrite() {
+    fake::modes[18] = 99;
+    fake::modes[19] = 99;
+    fake::levels[18] = HIGH;
     UltrasonicSensor sensor(18, 19);
     sensor.begin();
+    TEST_ASSERT_EQUAL(OUTPUT, fake::modes[18]);
+    TEST_ASSERT_EQUAL(INPUT, fake::modes[19]);
+    TEST_ASSERT_EQUAL(LOW, fake::levels[18]);
+    TEST_ASSERT_EQUAL(19, fake::interruptPin);
+    TEST_ASSERT_EQUAL(CHANGE, fake::interruptMode);
+    TEST_ASSERT_NOT_NULL(fake::callback);
+    TEST_ASSERT_NOT_NULL(fake::context);
     Reading result{77};
     TEST_ASSERT_FALSE(sensor.takeReading(result));
     TEST_ASSERT_EQUAL_FLOAT(77, *result.distanceCm);
@@ -27,6 +37,11 @@ void test_conversion_and_no_overwrite() {
     sensor.update();
     TEST_ASSERT_EQUAL(2, fake::triggerCount);
     TEST_ASSERT_EQUAL_UINT32(500000, fake::pulses[1]);
+    TEST_ASSERT_GREATER_THAN(0, fake::taskMutexes.size());
+    TEST_ASSERT_GREATER_THAN(0, fake::isrMutexes.size());
+    portMUX_TYPE* const expectedMutex = fake::taskMutexes.front();
+    for (auto* mutex : fake::taskMutexes) TEST_ASSERT_EQUAL_PTR(expectedMutex, mutex);
+    for (auto* mutex : fake::isrMutexes) TEST_ASSERT_EQUAL_PTR(expectedMutex, mutex);
 }
 void test_echo_high_and_period() {
     UltrasonicSensor sensor(18, 19);

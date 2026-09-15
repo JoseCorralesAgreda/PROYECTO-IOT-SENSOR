@@ -310,6 +310,8 @@ No se asigna un porcentaje global porque mezclaría evidencia de distinto nivel.
 
 **Aprendizaje del proceso.** El trabajo recorrió el ciclo completo de integración hardware-software —requisitos, arquitectura, implementación, pruebas automatizadas y plan de validación con criterios de aceptación— y obligó a coordinar conocimientos de electrónica, programación embebida y documentación técnica. El aprendizaje metodológico principal fue mantener la evidencia separada por nivel (documental, nativa, de compilación y manual) en lugar de resumirla en una única afirmación de cumplimiento.
 
+**Minimo de distancia.** Las pruebas con objetos a menos de 2 [cm] de distancia del sensor HRC-04 presentan fallas de rebote por parte del mismo sensor, ocasionando lecturas irreales de la distancia a la que los objetos son dispuestos. 
+
 ## 8. Recomendaciones
 
 **Diseño y hardware**

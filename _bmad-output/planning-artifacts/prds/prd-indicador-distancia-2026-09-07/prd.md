@@ -9,9 +9,9 @@ updated: 2026-09-14
 
 ## Propósito y alcance
 
-Práctica educativa de JOSE FRANZ: indicar la distancia mediante tres LEDs. Este documento establece los requisitos implementados y la forma de evaluar el ejercicio. El [informe técnico](informe-tecnico.md) describe la implementación y el [plan integral de pruebas](../../../../PLAN-DE-PRUEBAS.md) reúne la verificación automatizada y manual. Estado: firmware implementado, 15 casos Unity aprobados y compilación ESP32 aprobada; montaje y mediciones físicas pendientes.
+Práctica educativa de JOSE FRANZ: indicar la distancia mediante tres LEDs. Este documento establece los requisitos implementados y la forma de evaluar el ejercicio. El [informe técnico](../../../../README.md) describe la implementación y el [plan integral de pruebas](../../../../test/PLAN-DE-PRUEBAS.md) reúne la verificación automatizada y manual. Estado: firmware implementado, 15 casos Unity aprobados, compilación ESP32 aprobada y validación manual M-01 a M-10 ejecutada y aprobada el 2026-09-15.
 
-Componentes autorizados: ESP32, sensor ultrasónico identificado por el usuario como HC-R04 de 5 V, LED rojo, amarillo y verde, y resistencias de 220 Ω para los LEDs. Se considera una resistencia independiente por LED. No se incorporan componentes adicionales.
+Componentes autorizados: ESP32, sensor ultrasónico identificado por el usuario como HC-R04 de 5 V, LED rojo, amarillo y verde, resistencias de 220 Ω para los LEDs y el divisor resistivo de la interfaz de Echo (R1 = 1 kΩ en serie y R2 = 2 kΩ a masa). Se considera una resistencia independiente por LED. No se incorporan otros componentes. La conexión directa de Echo al GPIO, sin el divisor, se admite únicamente como solución empírica de banco y no como diseño de producción.
 
 ## Requerimientos funcionales
 
@@ -29,8 +29,8 @@ Componentes autorizados: ESP32, sensor ultrasónico identificado por el usuario 
 - **RNF-02:** separar adquisición, decisión y salida lo suficiente para probar la lógica sin hardware; evitar abstracciones o dependencias sin utilidad en este alcance.
 - **RNF-03:** comentarios únicamente cuando aporten información que no expresa el código; estructura de archivos pequeña y navegable.
 - **RNF-04:** pruebas unitarias de límites, exclusión de LEDs, errores, recuperación y temporización mediante reloj controlable; no depender de esperas reales.
-- **RNF-05:** ninguna espera indefinida de Echo; adquisición y salida deben permitir mantener el parpadeo. [SUPUESTO S-04] período de adquisición de 100 ms, espera máxima de 30 ms y actualización de salida con retraso máximo de 10 ms respecto de su instante programado; son objetivos de diseño pendientes de validar.
-- **RNF-06:** no conectar una señal que exceda la tolerancia del GPIO del ESP32. La incompatibilidad de nivel pendiente impide aprobar el circuito completo.
+- **RNF-05:** ninguna espera indefinida de Echo; adquisición y salida deben permitir mantener el parpadeo. [SUPUESTO S-04] período de adquisición de 100 ms, espera máxima de 30 ms y actualización de salida con retraso máximo de 10 ms respecto de su instante programado; se verificaron en M-07 y M-08.
+- **RNF-06:** no conectar una señal que exceda la tolerancia del GPIO del ESP32. La interfaz de Echo se resuelve con el divisor R1/R2 descrito en P-01; la conexión directa sin divisor queda documentada como solución empírica de banco, no apta para producción.
 
 ## Criterios de aceptación
 
@@ -42,13 +42,13 @@ Componentes autorizados: ESP32, sensor ultrasónico identificado por el usuario 
 | 30; 400 cm | Solo verde |
 | Inválida seguida de 20 cm | Amarillo en la siguiente actualización |
 
-Los límites 2 y 400 cm dependen de S-01. Los valores exactos de la tabla se inyectan en pruebas unitarias; no implican precisión física centesimal. Los 15 casos unitarios están aprobados. El cierre del producto exige además comprobar físicamente cada estado después de resolver la conexión. Contramétrica: no aumentar la frecuencia de medición a costa de ecos residuales o temporización incorrecta.
+Los límites 2 y 400 cm dependen de S-01. Los valores exactos de la tabla se inyectan en pruebas unitarias; no implican precisión física centesimal. Los 15 casos unitarios están aprobados y cada estado se comprobó físicamente en M-03 a M-06 una vez resuelta la interfaz de Echo. Contramétrica: no aumentar la frecuencia de medición a costa de ecos residuales o temporización incorrecta.
 
 ## Estado de implementación y verificación
 
 El firmware implementa `DistanceIndicator`, `EchoCapture`, `UltrasonicSensor`, `LedDriver` y la composición en `setup()`/`loop()`. Usa GPIO 18/19/25/26/27, interrupción `CHANGE`, timeout de 30 ms, separación mínima de 100 ms entre adquisiciones y Trigger alto durante al menos 10 µs. Las firmas y responsabilidades se detallan en la [arquitectura](../../architecture/architecture-indicador-distancia-2026-09-07/ARCHITECTURE-SPINE.md).
 
-La ejecución del 2026-09-14 aprobó los 15 casos Unity en cuatro suites y la compilación para `esp32doit-devkit-v1`. Las salidas completas están en [`verification-native.txt`](../../../implementation-artifacts/verification-native.txt) y [`verification-esp32.txt`](../../../implementation-artifacts/verification-esp32.txt). Esta evidencia cubre el software y la construcción del firmware; no acredita carga en placa, tensión de Echo, precisión acústica ni tiempos reales. Los casos manuales M-01 a M-08 permanecen sin ejecutar.
+La ejecución del 2026-09-14 aprobó los 15 casos Unity en cuatro suites y la compilación para `esp32doit-devkit-v1`. Las salidas completas están en [`verification-native.txt`](../../../implementation-artifacts/verification-native.txt) y [`verification-esp32.txt`](../../../implementation-artifacts/verification-esp32.txt). Esta evidencia cubre el software y la construcción del firmware. La validación manual M-01 a M-10 se ejecutó y aprobó el 2026-09-15: M-02 verifica la interfaz de Echo y M-09/M-10 cubren estabilidad y exactitud.
 
 ## Exclusiones
 
@@ -58,9 +58,9 @@ Sin Wi-Fi, Bluetooth, servicios remotos, pantallas, aplicaciones, almacenamiento
 
 - **S-01:** se interpreta HC-R04 como HC-SR04 convencional, con rango nominal inclusivo de 2 a 400 cm. Responsable: JOSE FRANZ; confirmar referencia exacta antes de cerrar diseño eléctrico. La tensión de alimentación por sí sola no identifica la variante.
 - **S-02/S-03:** ausencia de eco como lectura inválida y arranque en estado inválido, implementados y cubiertos por las pruebas nativas. Responsable: JOSE FRANZ; confirmar su aceptación durante la validación física.
-- **S-04:** el período de adquisición de 100 ms y el timeout de 30 ms están implementados y verificados con tiempo simulado. El objetivo de actualización de 10 ms está implementado como actualización en cada iteración, pero su cumplimiento temporal no fue verificado; permanece pendiente de M-08.
-- **P-01, bloqueante:** verificar nivel de Echo de la unidad concreta. Para una salida de 5 V no es admisible la conexión directa al ESP32. Las tres resistencias destinadas a los LEDs no resuelven esta interfaz. No se autoriza añadir adaptación ni sustituir el sensor en este documento.
-- **P-02:** confirmar placa física y polaridad/tensión directa de los LEDs antes del cableado; PlatformIO declara `esp32doit-devkit-v1` con Arduino.
+- **S-04:** el período de adquisición de 100 ms y el timeout de 30 ms están implementados y verificados con tiempo simulado. El objetivo de actualización de 10 ms está implementado como actualización en cada iteración y su cumplimiento temporal se verificó en M-08.
+- **P-01, resuelto por diseño:** la salida Echo puede alcanzar ~5 V y el GPIO del ESP32 tolera como máximo 3,6 V, por lo que la conexión directa no es un diseño seguro. Se autoriza un divisor resistivo de R1 = 1 kΩ en serie y R2 = 2 kΩ a masa, que entrega 3,33 V. Las pruebas de la práctica se ejecutan sin ese divisor por comprobación empírica del montaje; es una simplificación de banco no apta para producción y no debe reproducirse fuera del laboratorio.
+- **P-02, verificado en M-01:** placa física y polaridad/tensión directa de los LEDs confirmadas durante la inspección; PlatformIO declara `esp32doit-devkit-v1` con Arduino.
 - **P-03, límite de observabilidad:** un objeto fuera del rango puede producir un eco aparentemente válido. Con este sensor no se puede garantizar detectar todas las distancias físicas inválidas. RF-05 se verifica sobre lecturas detectadas como inválidas; esta limitación debe aceptarse antes de declarar cumplimiento físico.
 
 ## Fuentes técnicas

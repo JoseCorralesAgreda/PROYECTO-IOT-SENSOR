@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diagrama de circuito — Indicador de distancia con ESP32 y HC-SR04</title>
+<style>
+  :root { color-scheme: light; }
+  body {
+    margin: 0;
+    padding: 32px 20px 64px;
+    background: #eef1f5;
+    color: #1b1d22;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+  }
+  main { max-width: 1160px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 36px 0 10px; }
+  .sub { margin: 0 0 24px; color: #55617a; font-size: 14px; }
+  figure {
+    margin: 0;
+    background: #ffffff;
+    border: 1px solid #cfd7e3;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(20, 30, 50, .08);
+    overflow-x: auto;
+  }
+  figure svg { display: block; width: 100%; height: auto; min-width: 900px; }
+  figcaption { margin-top: 10px; color: #55617a; font-size: 13px; }
+  table { border-collapse: collapse; width: 100%; background: #fff; font-size: 14px; }
+  th, td { border: 1px solid #cfd7e3; padding: 7px 10px; text-align: left; }
+  th { background: #e8eef7; }
+  code { background: #e8eef7; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  .callout {
+    margin-top: 18px;
+    padding: 14px 18px;
+    border-left: 5px solid #d98b2b;
+    background: #fff7e8;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  .callout strong { color: #8a5410; }
+  ul { padding-left: 20px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Diagrama de circuito — Indicador de distancia con ESP32 y HC-SR04</h1>
+  <p class="sub">
+    Práctica 1 (SIS-234). Firmware en C++17 sobre <code>esp32doit-devkit-v1</code>.
+    El vector canónico del mismo diagrama se conserva en <code>circuito/circuito.svg</code>,
+    que es el archivo que incrusta el informe técnico.
+  </p>
+
+  <figure>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 700" width="1120" height="700" role="img" aria-labelledby="tituloCircuito descCircuito">
+      <title id="tituloCircuito">Diagrama de circuito del indicador de distancia con ESP32 y HC-SR04</title>
+      <desc id="descCircuito">ESP32 alimentado por USB. El HC-SR04 recibe 5 V y Trigger desde GPIO18. Su salida Echo pasa por el divisor resistivo R1 de 1 kiloohm en serie y R2 de 2 kiloohm a masa antes de llegar al GPIO19. Tres LEDs con resistencia de 220 ohmios cada uno se conectan a GPIO25, GPIO26 y GPIO27, con catodo a masa.</desc>
+      <defs>
+        <style>
+          .wire { fill: none; stroke: #232323; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+          .junc { fill: #232323; }
+          .box  { fill: #fbfcff; stroke: #232323; stroke-width: 2.4; }
+          .comp { fill: #ffffff; stroke: #232323; stroke-width: 2.2; }
+          .gnd  { fill: none; stroke: #232323; stroke-width: 2.2; stroke-linecap: round; }
+          .title { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 16px; font-weight: 700; fill: #16181d; }
+          .lbl { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 13px; fill: #232323; }
+          .lbl-b { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 13px; font-weight: 700; fill: #232323; }
+          .pin { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 12px; fill: #333333; }
+          .sm  { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 11px; fill: #555555; }
+          .note { fill: #f2f7ff; stroke: #8aa7c7; stroke-width: 1.4; }
+        </style>
+      </defs>
+
+      <rect x="0" y="0" width="1120" height="700" fill="#ffffff"/>
+      <text class="title" x="40" y="36">Indicador de distancia — ESP32 + HC-SR04</text>
+
+      <!-- ===================== Módulos ===================== -->
+      <rect class="box" x="40" y="60" width="170" height="600" rx="10"/>
+      <text class="lbl-b" x="125" y="90" text-anchor="middle">ESP32</text>
+      <text class="pin" x="125" y="106" text-anchor="middle">esp32doit-devkit-v1</text>
+
+      <rect class="box" x="790" y="60" width="200" height="210" rx="10"/>
+      <text class="lbl-b" x="890" y="90" text-anchor="middle">HC-SR04</text>
+      <text class="pin" x="890" y="106" text-anchor="middle">sensor ultrasónico</text>
+
+      <!-- ===================== Pines ESP32 ===================== -->
+      <text class="pin" x="200" y="124" text-anchor="end">5V</text>
+      <text class="pin" x="200" y="204" text-anchor="end">GND</text>
+      <text class="pin" x="200" y="304" text-anchor="end">GPIO18</text>
+      <text class="sm"  x="200" y="318" text-anchor="end">Trigger</text>
+      <text class="pin" x="200" y="374" text-anchor="end">GPIO19</text>
+      <text class="sm"  x="200" y="388" text-anchor="end">Echo</text>
+      <text class="pin" x="200" y="474" text-anchor="end">GPIO25</text>
+      <text class="sm"  x="200" y="488" text-anchor="end">LED rojo</text>
+      <text class="pin" x="200" y="549" text-anchor="end">GPIO26</text>
+      <text class="sm"  x="200" y="563" text-anchor="end">LED amarillo</text>
+      <text class="pin" x="200" y="624" text-anchor="end">GPIO27</text>
+      <text class="sm"  x="200" y="638" text-anchor="end">LED verde</text>
+
+      <!-- ===================== Pines sensor ===================== -->
+      <text class="pin" x="802" y="104">VCC</text>
+      <text class="pin" x="802" y="154">TRIG</text>
+      <text class="pin" x="802" y="204">ECHO</text>
+      <text class="pin" x="802" y="254">GND</text>
+
+      <!-- ===================== Cables principales ===================== -->
+      <path class="wire" d="M210 120 H660 V100 H790"/>
+      <path class="wire" d="M210 200 H300"/>
+      <path class="wire" d="M210 300 H305 V150 H790"/>
+      <path class="wire" d="M790 200 H702"/>
+      <path class="wire" d="M658 200 H600"/>
+      <path class="wire" d="M600 200 V240"/>
+      <path class="wire" d="M600 285 V310"/>
+      <path class="wire" d="M600 200 H545 V370 H210"/>
+      <path class="wire" d="M790 250 H700 V290"/>
+
+      <!-- ===================== Divisor resistivo de Echo ===================== -->
+      <rect class="comp" x="658" y="192" width="44" height="16"/>
+      <text class="sm" x="680" y="184" text-anchor="middle">R1 = 1 kΩ</text>
+      <rect class="comp" x="592" y="240" width="16" height="45"/>
+      <text class="sm" x="618" y="268">R2 = 2 kΩ</text>
+      <circle class="junc" cx="600" cy="200" r="4.5"/>
+
+      <!-- ===================== LEDs ===================== -->
+      <path class="wire" d="M210 470 H320"/>
+      <rect class="comp" x="320" y="462" width="44" height="16"/>
+      <text class="sm" x="342" y="456" text-anchor="middle">220 Ω</text>
+      <path class="wire" d="M364 470 H400"/>
+      <polygon class="comp" points="400,458 400,482 428,470"/>
+      <path class="wire" d="M428 458 V482"/>
+      <path class="wire" d="M428 470 H470 V495"/>
+      <text class="sm" x="414" y="502" text-anchor="middle">LED rojo</text>
+
+      <path class="wire" d="M210 545 H320"/>
+      <rect class="comp" x="320" y="537" width="44" height="16"/>
+      <text class="sm" x="342" y="531" text-anchor="middle">220 Ω</text>
+      <path class="wire" d="M364 545 H400"/>
+      <polygon class="comp" points="400,533 400,557 428,545"/>
+      <path class="wire" d="M428 533 V557"/>
+      <path class="wire" d="M428 545 H470 V570"/>
+      <text class="sm" x="414" y="577" text-anchor="middle">LED amarillo</text>
+
+      <path class="wire" d="M210 620 H320"/>
+      <rect class="comp" x="320" y="612" width="44" height="16"/>
+      <text class="sm" x="342" y="606" text-anchor="middle">220 Ω</text>
+      <path class="wire" d="M364 620 H400"/>
+      <polygon class="comp" points="400,608 400,632 428,620"/>
+      <path class="wire" d="M428 608 V632"/>
+      <path class="wire" d="M428 620 H470 V645"/>
+      <text class="sm" x="414" y="652" text-anchor="middle">LED verde</text>
+
+      <!-- ===================== Símbolos de masa ===================== -->
+      <g class="gnd" transform="translate(300,200)"><path d="M0 0 V10 M-13 10 H13 M-8 16 H8 M-3 22 H3"/></g>
+      <g class="gnd" transform="translate(700,290)"><path d="M0 0 V10 M-13 10 H13 M-8 16 H8 M-3 22 H3"/></g>
+      <g class="gnd" transform="translate(600,310)"><path d="M0 0 V10 M-13 10 H13 M-8 16 H8 M-3 22 H3"/></g>
+      <g class="gnd" transform="translate(470,495)"><path d="M0 0 V10 M-13 10 H13 M-8 16 H8 M-3 22 H3"/></g>
+      <g class="gnd" transform="translate(470,570)"><path d="M0 0 V10 M-13 10 H13 M-8 16 H8 M-3 22 H3"/></g>
+      <g class="gnd" transform="translate(470,645)"><path d="M0 0 V10 M-13 10 H13 M-8 16 H8 M-3 22 H3"/></g>
+
+      <!-- ===================== Etiquetas de red ===================== -->
+      <text class="sm" x="470" y="112" text-anchor="middle">5 V</text>
+      <text class="sm" x="500" y="142" text-anchor="middle">Trigger (10 µs)</text>
+      <text class="sm" x="748" y="190" text-anchor="middle">Echo 5 V</text>
+
+      <!-- ===================== Notas de diseño ===================== -->
+      <rect class="note" x="600" y="350" width="470" height="250" rx="10"/>
+      <text class="lbl-b" x="618" y="382">Interfaz de Echo (5 V → 3,3 V)</text>
+      <text class="sm" x="618" y="410">Diseño correcto: R1 = 1 kΩ en serie y R2 = 2 kΩ a GND.</text>
+      <text class="sm" x="618" y="432">V(GPIO19) = 5 V × 2 kΩ / (1 kΩ + 2 kΩ) = 3,33 V,</text>
+      <text class="sm" x="618" y="454">por debajo del límite absoluto de 3,6 V del GPIO.</text>
+      <text class="sm" x="618" y="480">Solución aplicada en el banco (no apta para producción):</text>
+      <text class="sm" x="618" y="502">Echo conectado directamente, sin R1 ni R2.</text>
+      <text class="sm" x="618" y="524">Se comprobó empíricamente que el circuito funciona sin el divisor;</text>
+      <text class="sm" x="618" y="546">es una simplificación de laboratorio, no un diseño de producción.</text>
+      <text class="sm" x="618" y="574">El divisor dibujado es el diseño recomendado para producción.</text>
+    </svg>
+    <figcaption>
+      Figura 1. Alimentación, Trigger, interfaz de Echo mediante divisor resistivo y
+      salidas LED. Masas comunes; ninguna señal de 5 V llega directamente a un GPIO de 3,3 V.
+    </figcaption>
+  </figure>
+
+  <h2>Lista de conexiones</h2>
+  <table>
+    <thead>
+      <tr><th>Origen</th><th>Destino</th><th>Componente en serie</th><th>Nota</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>ESP32 5&nbsp;V</td><td>HC-SR04 VCC</td><td>—</td><td>Alimentación del sensor</td></tr>
+      <tr><td>ESP32 GND</td><td>HC-SR04 GND</td><td>—</td><td>Masa común</td></tr>
+      <tr><td>ESP32 GPIO18</td><td>HC-SR04 TRIG</td><td>—</td><td>Pulso alto de 10&nbsp;µs</td></tr>
+      <tr><td>HC-SR04 ECHO</td><td>Nodo del divisor</td><td>R1 = 1&nbsp;kΩ</td><td>Salida del sensor, ≈5&nbsp;V</td></tr>
+      <tr><td>Nodo del divisor</td><td>ESP32 GPIO19</td><td>—</td><td>3,33&nbsp;V ≤ 3,6&nbsp;V</td></tr>
+      <tr><td>Nodo del divisor</td><td>GND</td><td>R2 = 2&nbsp;kΩ</td><td>Rama inferior del divisor</td></tr>
+      <tr><td>ESP32 GPIO25</td><td>LED rojo → GND</td><td>220&nbsp;Ω</td><td>Ánodo al GPIO, cátodo a masa</td></tr>
+      <tr><td>ESP32 GPIO26</td><td>LED amarillo → GND</td><td>220&nbsp;Ω</td><td>Ánodo al GPIO, cátodo a masa</td></tr>
+      <tr><td>ESP32 GPIO27</td><td>LED verde → GND</td><td>220&nbsp;Ω</td><td>Ánodo al GPIO, cátodo a masa</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Diseño de la interfaz de Echo</h2>
+  <p>
+    El HC-SR04 se alimenta a 5&nbsp;V y su salida Echo puede alcanzar ese nivel, mientras que
+    los GPIO del ESP32 toleran como máximo 3,6&nbsp;V. El divisor formado por
+    <code>R1 = 1&nbsp;kΩ</code> (serie) y <code>R2 = 2&nbsp;kΩ</code> (a masa) entrega:
+  </p>
+  <p><code>V(GPIO19) = 5&nbsp;V × 2&nbsp;kΩ / (1&nbsp;kΩ + 2&nbsp;kΩ) = 3,33&nbsp;V</code></p>
+  <p>
+    que queda por debajo del límite absoluto del GPIO. La relación 1:2 del divisor deja además
+    margen frente a variaciones de la fuente de 5&nbsp;V.
+  </p>
+
+  <div class="callout">
+    <p>
+      <strong>Solución aplicada en el banco de pruebas (no apta para producción).</strong>
+      Durante la construcción y las pruebas de laboratorio el conjunto se montó
+      <em>sin</em> el divisor: Echo se conectó directamente al GPIO19. Se comprobó
+      empíricamente que el circuito funciona correctamente en esas condiciones, por lo que
+      el montaje de la práctica usa esa simplificación. La conexión directa no ofrece margen
+      de seguridad eléctrica y no debe reproducirse en una versión de producción: el divisor
+      aquí dibujado es el diseño recomendado y el que debe implementarse en producción.
+    </p>
+  </div>
+
+  <h2>Valores de los componentes</h2>
+  <ul>
+    <li><code>R1 = 1&nbsp;kΩ</code> — resistencia en serie con Echo (rama superior del divisor).</li>
+    <li><code>R2 = 2&nbsp;kΩ</code> — resistencia de Echo a masa (rama inferior del divisor).</li>
+    <li><code>220&nbsp;Ω</code> × 3 — una por LED, entre el GPIO y el ánodo.</li>
+  </ul>
+
+  <h2>Referencias</h2>
+  <ul>
+    <li>Ficha técnica HC-SR04 (ElecFreaks, alojada por SparkFun): rango y temporización.</li>
+    <li>Espressif, tolerancia de GPIO: límite absoluto de 3,6&nbsp;V en ESP32.</li>
+  </ul>
+</main>
+</body>
+</html>

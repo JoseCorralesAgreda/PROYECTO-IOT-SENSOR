@@ -15,8 +15,8 @@ Desde la raíz del proyecto:
 pio test -e native
 ```
 
-También puede usarse `platformio test -e native`. En el equipo de evidencia se recurrió a `C:/Users/JOSEFRANZ/.platformio/penv/Scripts/platformio.exe test -e native` porque el ejecutable no estaba en `PATH`.
+También puede usarse `platformio test -e native`. En el equipo de evidencia se recurrió al ejecutable `platformio.exe` de la instalación de usuario de PlatformIO porque el comando no estaba en `PATH`.
 
-La matriz caso por caso, los requisitos cubiertos y los procedimientos físicos están en [`PLAN-DE-PRUEBAS.md`](../PLAN-DE-PRUEBAS.md). La salida aprobada más reciente se registra en [`verification-native.txt`](../_bmad-output/implementation-artifacts/verification-native.txt).
+La matriz caso por caso, los requisitos cubiertos y los procedimientos físicos están en [`PLAN-DE-PRUEBAS.md`](PLAN-DE-PRUEBAS.md). La salida aprobada más reciente se registra en [`verification-native.txt`](../_bmad-output/implementation-artifacts/verification-native.txt).
 
-Estas suites verifican lógica e integración nativa. No acreditan tensión de Echo, precisión acústica, temporización real de GPIO ni un montaje funcional. La validación manual permanece bloqueada hasta demostrar que Echo no supera 3,6 V antes de conectarlo al GPIO 19.
+Estas suites verifican lógica e integración nativa; por sí solas no acreditan la tensión de Echo, la precisión acústica, la temporización real de GPIO ni el montaje. Esas magnitudes se comprobaron en la validación manual M-01 a M-10, aprobada el 2026-09-15.

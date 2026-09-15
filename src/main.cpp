@@ -26,6 +26,8 @@ void setup() {
 void loop() {
     Reading reading;
 
+    // First read consumes a result left pending by the previous iteration
+    // before a new acquisition is allowed to start.
     if (sensor.takeReading(reading)) {
 
         if (reading.distanceCm.has_value()) {
@@ -41,6 +43,9 @@ void loop() {
 
     sensor.update();
 
+    // update() can complete or expire a capture immediately (for example an
+    // already-high echo or a reached timeout), so the second read applies that
+    // result in this same iteration instead of waiting one cycle.
     if (sensor.takeReading(reading)) {
 
         if (reading.distanceCm.has_value()) {

@@ -10,8 +10,13 @@ public:
     void accept(std::optional<float> distanceCm, std::uint32_t nowMs) {
         const auto next = classify(distanceCm);
         if (next == State::Invalid && state_ != State::Invalid) {
+            ++invalidReadings_;
+            if (invalidReadings_ < kInvalidReadingsBeforeError)
+                return;
             phaseStartMs_ = nowMs;
             phaseOn_ = true;
+        } else if (next != State::Invalid) {
+            invalidReadings_ = 0;
         }
         state_ = next;
     }
@@ -24,6 +29,7 @@ public:
         return {phaseOn_, phaseOn_, phaseOn_};
     }
 private:
+    static constexpr std::uint8_t kInvalidReadingsBeforeError = 2;
     enum class State { Invalid, Red, Yellow, Green };
     static State classify(std::optional<float> distanceCm) {
         if (!distanceCm || !std::isfinite(*distanceCm) || *distanceCm < 2.0f ||
@@ -33,6 +39,7 @@ private:
         return State::Green;
     }
     State state_ = State::Invalid;
+    std::uint8_t invalidReadings_ = 0;
     std::uint32_t phaseStartMs_;
     bool phaseOn_ = true;
 };

@@ -24,8 +24,10 @@ void test_invalid_values() {
         DistanceIndicator indicator;
         indicator.accept(20, 0);
         indicator.accept(value, 100);
-        assertLights(indicator.output(100), true, true, true);
-        assertLights(indicator.output(350), false, false, false);
+        assertLights(indicator.output(100), false, true, false);
+        indicator.accept(value, 200);
+        assertLights(indicator.output(200), true, true, true);
+        assertLights(indicator.output(450), false, false, false);
     }
 }
 void test_phase_and_repeated_invalid() {
@@ -47,9 +49,11 @@ void test_recovery_and_new_error() {
     indicator.accept(20, 270);
     assertLights(indicator.output(270), false, true, false);
     indicator.accept(std::nullopt, 290);
-    assertLights(indicator.output(290), true, true, true);
-    assertLights(indicator.output(539), true, true, true);
-    assertLights(indicator.output(540), false, false, false);
+    assertLights(indicator.output(290), false, true, false);
+    indicator.accept(std::nullopt, 390);
+    assertLights(indicator.output(390), true, true, true);
+    assertLights(indicator.output(639), true, true, true);
+    assertLights(indicator.output(640), false, false, false);
 }
 void test_wrap() {
     const std::uint32_t start = UINT32_MAX - 100;

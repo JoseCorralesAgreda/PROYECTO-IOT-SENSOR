@@ -60,3 +60,11 @@ inline void attachInterruptArg(int pin, void (*callback)(void*), void* context, 
     fake::callback = callback; fake::context = context;
     fake::interruptPin = pin; fake::interruptMode = mode;
 }
+struct FakeSerial {
+    void begin(unsigned long) {}
+    void print(const char*) {}
+    void print(float) {}
+    void println(const char*) {}
+};
+inline FakeSerial Serial;
+inline void delay(unsigned long) {}
